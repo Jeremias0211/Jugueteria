@@ -1,0 +1,123 @@
+{% extends "productos/base.html" %}
+{% block title %}Carga de Productos — Depósito{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card p-4">
+      <h5 class="mb-3">➕ Nuevo producto</h5>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">{{ form.nombre.label }}</label>
+          {{ form.nombre }}
+          {% for error in form.nombre.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="row">
+          <div class="col-6 mb-3">
+            <label class="form-label">{{ form.precio.label }}</label>
+            {{ form.precio }}
+            {% for error in form.precio.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="col-6 mb-3">
+            <label class="form-label">{{ form.stock.label }}</label>
+            {{ form.stock }}
+            {% for error in form.stock.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">{{ form.codigo_barra.label }}</label>
+          <div class="input-group">
+            {{ form.codigo_barra }}
+            <button class="btn btn-outline-secondary" type="button" id="btn-escanear">📷 Escanear</button>
+          </div>
+          <div id="scan-status" class="form-text"></div>
+          {% for error in form.codigo_barra.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+
+        <!-- input oculto: abre la cámara del celular y toma una foto del código -->
+        <input type="file" accept="image/*" capture="environment" id="input-foto-barcode" style="display:none">
+        <div id="reader-file" style="display:none;"></div>
+
+        <button type="submit" class="btn btn-primary w-100 mt-2">Guardar producto</button>
+      </form>
+      <hr>
+      <details>
+        <summary class="text-muted small">¿Cómo funciona el escaneo?</summary>
+        <p class="small text-muted mt-2 mb-0">
+          Al tocar «Escanear» se abre la cámara del celular para sacarle una foto al
+          código de barras. La lectura se hace en el propio navegador (librería
+          <code>html5-qrcode</code>) y completa el campo automáticamente. Si la foto no
+          se lee bien, se puede escribir el código a mano.
+        </p>
+      </details>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">📦 Stock de productos <span class="badge bg-secondary">{{ total_productos }}</span></h5>
+        <form method="get" class="d-flex" role="search">
+          <input type="search" name="q" value="{{ query }}" class="form-control form-control-sm me-2" placeholder="Buscar producto...">
+          <button class="btn btn-sm btn-outline-primary">Buscar</button>
+        </form>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr><th>Código</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Estado</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for p in productos %}
+            <tr>
+              <td class="text-muted">{{ p.codigo_barra|default:"—" }}</td>
+              <td>{{ p.nombre }}</td>
+              <td>${{ p.precio }}</td>
+              <td>{{ p.stock }}</td>
+              <td>
+                {% if p.estado_stock == "OK" %}<span class="badge badge-ok">OK</span>
+                {% elif p.estado_stock == "BAJO" %}<span class="badge badge-bajo">BAJO</span>
+                {% else %}<span class="badge badge-sin">SIN STOCK</span>{% endif %}
+              </td>
+              <td class="text-end">
+                <form method="post" action="{% url 'eliminar_producto' p.pk %}" onsubmit="return confirm('¿Eliminar {{ p.nombre }}?');">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+                </form>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-4">Todavía no hay productos cargados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+document.getElementById("btn-escanear").addEventListener("click", function () {
+  document.getElementById("input-foto-barcode").click();
+});
+
+document.getElementById("input-foto-barcode").addEventListener("change", function (e) {
+  const file = e.target.files[0];
+  const status = document.getElementById("scan-status");
+  if (!file) return;
+  status.textContent = "Leyendo código...";
+  const scanner = new Html5Qrcode("reader-file");
+  scanner.scanFile(file, false)
+    .then(decodedText => {
+      document.getElementById("id_codigo_barra").value = decodedText;
+      status.textContent = "✅ Código detectado: " + decodedText;
+      status.classList.add("text-success");
+    })
+    .catch(err => {
+      status.textContent = "No se pudo leer el código en la foto. Probá de nuevo o cargalo a mano.";
+      status.classList.add("text-danger");
+    });
+});
+</script>
+{% endblock %}
