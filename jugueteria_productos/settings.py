@@ -76,15 +76,8 @@ WSGI_APPLICATION = 'jugueteria_productos.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres.xxxxxxxxx',
-        'PASSWORD': 'TU_CONTRASEÑA',
-        'HOST': 'aws-0-us-east-1.pooler.supabase.com', 
-        'PORT': '5432',
-        'OPTIONS': {
-            'sslmode': 'require',
-        },
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 

@@ -14,10 +14,22 @@
 </style>
 </head>
 <body>
-<nav class="navbar navbar-dark" style="background:#5089C4;">
+<nav class="navbar navbar-expand-lg navbar-dark" style="background:#5089C4;">
   <div class="container">
-    <span class="navbar-brand">🧸 Sistema de Gestión — Juguetería</span>
-    <span class="text-white-50 small">Módulo: Depósito — Carga de Productos</span>
+    <a class="navbar-brand" href="{% url 'carga_productos' %}">🧸 Sistema de Gestión — Juguetería</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link {% if request.resolver_match.url_name == 'carga_productos' %}active fw-bold{% endif %}" href="{% url 'carga_productos' %}">📦 Depósito (Productos)</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if 'admin' in request.resolver_match.url_name %}active fw-bold{% endif %}" href="{% url 'admin_dashboard' %}">⚙️ Panel Administrador</a>
+        </li>
+      </ul>
+    </div>
   </div>
 </nav>
 <div class="container my-4">
@@ -35,3 +47,4 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+

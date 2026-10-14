@@ -28,10 +28,10 @@ source venv/bin/activate     # Mac/Linux
 pip install -r requirements.txt
 
 # 4) crear la base de datos (ya viene con migraciones y datos de ejemplo)
-python manage.py migrate
+py manage.py migrate
 
 # 5) levantar el servidor, accesible desde toda la red Wi-Fi
-python manage.py runserver 0.0.0.0:8000
+py manage.py runserver
 ```
 
 Abrir en la notebook: **http://127.0.0.1:8000/**

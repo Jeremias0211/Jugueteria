@@ -1,123 +1,812 @@
 {% extends "productos/base.html" %}
+
 {% block title %}Carga de Productos — Depósito{% endblock %}
+
 {% block content %}
+
 <div class="row g-4">
-  <div class="col-lg-4">
-    <div class="card p-4">
-      <h5 class="mb-3">➕ Nuevo producto</h5>
-      <form method="post" novalidate>
-        {% csrf_token %}
-        <div class="mb-3">
-          <label class="form-label">{{ form.nombre.label }}</label>
-          {{ form.nombre }}
-          {% for error in form.nombre.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-        </div>
-        <div class="row">
-          <div class="col-6 mb-3">
-            <label class="form-label">{{ form.precio.label }}</label>
-            {{ form.precio }}
-            {% for error in form.precio.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-          </div>
-          <div class="col-6 mb-3">
-            <label class="form-label">{{ form.stock.label }}</label>
-            {{ form.stock }}
-            {% for error in form.stock.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-          </div>
-        </div>
-        <div class="mb-2">
-          <label class="form-label">{{ form.codigo_barra.label }}</label>
-          <div class="input-group">
-            {{ form.codigo_barra }}
-            <button class="btn btn-outline-secondary" type="button" id="btn-escanear">📷 Escanear</button>
-          </div>
-          <div id="scan-status" class="form-text"></div>
-          {% for error in form.codigo_barra.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-        </div>
 
-        <!-- input oculto: abre la cámara del celular y toma una foto del código -->
-        <input type="file" accept="image/*" capture="environment" id="input-foto-barcode" style="display:none">
-        <div id="reader-file" style="display:none;"></div>
+    <!-- ==========================================
+         FORMULARIO
+    =========================================== -->
 
-        <button type="submit" class="btn btn-primary w-100 mt-2">Guardar producto</button>
-      </form>
-      <hr>
-      <details>
-        <summary class="text-muted small">¿Cómo funciona el escaneo?</summary>
-        <p class="small text-muted mt-2 mb-0">
-          Al tocar «Escanear» se abre la cámara del celular para sacarle una foto al
-          código de barras. La lectura se hace en el propio navegador (librería
-          <code>html5-qrcode</code>) y completa el campo automáticamente. Si la foto no
-          se lee bien, se puede escribir el código a mano.
-        </p>
-      </details>
-    </div>
-  </div>
+    <div class="col-lg-4">
 
-  <div class="col-lg-8">
-    <div class="card p-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0">📦 Stock de productos <span class="badge bg-secondary">{{ total_productos }}</span></h5>
-        <form method="get" class="d-flex" role="search">
-          <input type="search" name="q" value="{{ query }}" class="form-control form-control-sm me-2" placeholder="Buscar producto...">
-          <button class="btn btn-sm btn-outline-primary">Buscar</button>
-        </form>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light">
-            <tr><th>Código</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Estado</th><th></th></tr>
-          </thead>
-          <tbody>
-            {% for p in productos %}
-            <tr>
-              <td class="text-muted">{{ p.codigo_barra|default:"—" }}</td>
-              <td>{{ p.nombre }}</td>
-              <td>${{ p.precio }}</td>
-              <td>{{ p.stock }}</td>
-              <td>
-                {% if p.estado_stock == "OK" %}<span class="badge badge-ok">OK</span>
-                {% elif p.estado_stock == "BAJO" %}<span class="badge badge-bajo">BAJO</span>
-                {% else %}<span class="badge badge-sin">SIN STOCK</span>{% endif %}
-              </td>
-              <td class="text-end">
-                <form method="post" action="{% url 'eliminar_producto' p.pk %}" onsubmit="return confirm('¿Eliminar {{ p.nombre }}?');">
-                  {% csrf_token %}
-                  <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+        <div class="card p-4">
+
+            <h5 class="mb-3">
+                📦 Gestión de productos
+            </h5>
+
+
+            <!-- BOTÓN ESCANEAR -->
+
+            <button
+                type="button"
+                id="btn-escanear"
+                class="btn btn-primary w-100 mb-3">
+
+                📷 Escanear código de barras
+
+            </button>
+
+
+            <!-- ESTADO DEL ESCANEO -->
+
+            <div
+                id="scan-status"
+                class="form-text mb-3">
+            </div>
+
+
+            <!-- CÁMARA -->
+
+            <div
+                id="scanner-container"
+                style="display:none;"
+                class="mb-3">
+
+                <div
+                    class="border rounded p-2">
+
+                    <div id="reader"></div>
+
+                </div>
+
+                <button
+                    type="button"
+                    id="btn-detener"
+                    class="btn btn-danger btn-sm w-100 mt-2">
+
+                    ❌ Detener cámara
+
+                </button>
+
+            </div>
+
+
+            <!-- ==================================
+                 PRODUCTO ENCONTRADO
+            =================================== -->
+
+            <div
+                id="producto-encontrado"
+                style="display:none;"
+                class="alert alert-success">
+
+                <h6>
+                    📦 Producto encontrado
+                </h6>
+
+                <hr>
+
+                <p class="mb-1">
+                    <strong>Nombre:</strong>
+                    <span id="producto-nombre"></span>
+                </p>
+
+                <p class="mb-1">
+                    <strong>Precio:</strong>
+                    $<span id="producto-precio"></span>
+                </p>
+
+                <p class="mb-1">
+                    <strong>Stock actual:</strong>
+                    <span id="producto-stock"></span>
+                </p>
+
+                <p class="mb-3">
+                    <strong>Código:</strong>
+                    <span id="producto-codigo"></span>
+                </p>
+
+
+                <form
+                    id="form-stock"
+                    method="post">
+
+                    {% csrf_token %}
+
+                    <label class="form-label">
+                        Cantidad a agregar
+                    </label>
+
+                    <input
+                        type="number"
+                        name="cantidad"
+                        min="1"
+                        value="1"
+                        class="form-control mb-2"
+                        required>
+
+                    <button
+                        type="submit"
+                        class="btn btn-success w-100">
+
+                        ➕ Agregar stock
+
+                    </button>
+
                 </form>
-              </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="6" class="text-center text-muted py-4">Todavía no hay productos cargados.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+
+            </div>
+
+
+            <!-- ==================================
+                 FORMULARIO NUEVO PRODUCTO
+            =================================== -->
+
+            <div id="form-nuevo-producto">
+
+                <h6 class="mb-3">
+                    ➕ Nuevo producto
+                </h6>
+
+
+                <form
+                    method="post"
+                    id="producto-form"
+                    novalidate>
+
+                    {% csrf_token %}
+
+
+                    <!-- NOMBRE -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            {{ form.nombre.label }}
+                        </label>
+
+                        {{ form.nombre }}
+
+                        {% for error in form.nombre.errors %}
+
+                            <div class="text-danger small">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <!-- PRECIO -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            {{ form.precio.label }}
+                        </label>
+
+                        {{ form.precio }}
+
+                        {% for error in form.precio.errors %}
+
+                            <div class="text-danger small">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <!-- STOCK -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            {{ form.stock.label }}
+                        </label>
+
+                        {{ form.stock }}
+
+                        {% for error in form.stock.errors %}
+
+                            <div class="text-danger small">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <!-- CÓDIGO -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            {{ form.codigo_barra.label }}
+                        </label>
+
+                        {{ form.codigo_barra }}
+
+                        {% for error in form.codigo_barra.errors %}
+
+                            <div class="text-danger small">
+                                {{ error }}
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <button
+                        type="submit"
+                        class="btn btn-success w-100">
+
+                        💾 Guardar producto
+
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
     </div>
-  </div>
+
+
+    <!-- ==========================================
+         TABLA DE PRODUCTOS
+    =========================================== -->
+
+    <div class="col-lg-8">
+
+        <div class="card p-4">
+
+            <div
+                class="d-flex justify-content-between align-items-center mb-3">
+
+                <h5 class="mb-0">
+
+                    📦 Stock de productos
+
+                    <span class="badge bg-secondary">
+                        {{ total_productos }}
+                    </span>
+
+                </h5>
+
+
+                <form
+                    method="get"
+                    class="d-flex"
+                    role="search">
+
+                    <input
+                        type="search"
+                        name="q"
+                        value="{{ query }}"
+                        class="form-control form-control-sm me-2"
+                        placeholder="Buscar producto...">
+
+                    <button
+                        class="btn btn-sm btn-outline-primary">
+
+                        Buscar
+
+                    </button>
+
+                </form>
+
+            </div>
+
+
+            <div class="table-responsive">
+
+                <table
+                    class="table table-hover align-middle">
+
+                    <thead class="table-light">
+
+                        <tr>
+
+                            <th>Código</th>
+
+                            <th>Nombre</th>
+
+                            <th>Precio</th>
+
+                            <th>Stock</th>
+
+                            <th>Estado</th>
+
+                            <th></th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        {% for p in productos %}
+
+                        <tr>
+
+                            <td class="text-muted">
+
+                                {{ p.codigo_barra|default:"—" }}
+
+                            </td>
+
+
+                            <td>
+                                {{ p.nombre }}
+                            </td>
+
+
+                            <td>
+                                ${{ p.precio }}
+                            </td>
+
+
+                            <td>
+                                {{ p.stock }}
+                            </td>
+
+
+                            <td>
+
+                                {% if p.estado_stock == "OK" %}
+
+                                    <span class="badge badge-ok">
+                                        OK
+                                    </span>
+
+                                {% elif p.estado_stock == "BAJO" %}
+
+                                    <span class="badge badge-bajo">
+                                        BAJO
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge badge-sin">
+                                        SIN STOCK
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <td class="text-end">
+
+                                <form
+                                    method="post"
+                                    action="{% url 'eliminar_producto' p.pk %}"
+                                    onsubmit="return confirm('¿Eliminar {{ p.nombre }}?');">
+
+                                    {% csrf_token %}
+
+                                    <button
+                                        class="btn btn-sm btn-outline-danger">
+
+                                        Eliminar
+
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+
+
+                        {% empty %}
+
+                        <tr>
+
+                            <td
+                                colspan="6"
+                                class="text-center text-muted py-4">
+
+                                Todavía no hay productos cargados.
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
 </div>
 
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script>
-document.getElementById("btn-escanear").addEventListener("click", function () {
-  document.getElementById("input-foto-barcode").click();
-});
 
-document.getElementById("input-foto-barcode").addEventListener("change", function (e) {
-  const file = e.target.files[0];
-  const status = document.getElementById("scan-status");
-  if (!file) return;
-  status.textContent = "Leyendo código...";
-  const scanner = new Html5Qrcode("reader-file");
-  scanner.scanFile(file, false)
-    .then(decodedText => {
-      document.getElementById("id_codigo_barra").value = decodedText;
-      status.textContent = "✅ Código detectado: " + decodedText;
-      status.classList.add("text-success");
+<!-- ==========================================
+     LIBRERÍA DEL ESCÁNER
+=========================================== -->
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+
+<script>
+
+let scanner = null;
+
+let scannerActivo = false;
+
+
+/* ==========================================
+   BOTÓN ESCANEAR
+=========================================== */
+
+document
+    .getElementById("btn-escanear")
+    .addEventListener(
+        "click",
+        iniciarScanner
+    );
+
+
+/* ==========================================
+   INICIAR ESCÁNER
+=========================================== */
+
+function iniciarScanner() {
+
+    const container =
+        document.getElementById(
+            "scanner-container"
+        );
+
+    const status =
+        document.getElementById(
+            "scan-status"
+        );
+
+
+    container.style.display = "block";
+
+
+    status.textContent =
+        "📷 Activando cámara...";
+
+
+    status.className =
+        "form-text mb-3 text-primary";
+
+
+    scanner =
+        new Html5Qrcode("reader");
+
+
+    scannerActivo = true;
+
+
+    const configuracion = {
+
+        fps: 10,
+
+        qrbox: {
+            width: 350,
+            height: 150
+        },
+
+        formatsToSupport: [
+
+            Html5QrcodeSupportedFormats.EAN_13,
+
+            Html5QrcodeSupportedFormats.EAN_8,
+
+            Html5QrcodeSupportedFormats.UPC_A,
+
+            Html5QrcodeSupportedFormats.UPC_E,
+
+            Html5QrcodeSupportedFormats.CODE_128,
+
+            Html5QrcodeSupportedFormats.CODE_39
+
+        ]
+
+    };
+
+
+    scanner.start(
+
+        {
+            facingMode: "environment"
+        },
+
+        configuracion,
+
+        codigoDetectado,
+
+        function () {
+
+            // No hacemos nada cuando todavía no detecta
+
+        }
+
+    )
+
+    .then(function () {
+
+        status.textContent =
+            "📷 Cámara activa. Apuntá al código de barras.";
+
     })
-    .catch(err => {
-      status.textContent = "No se pudo leer el código en la foto. Probá de nuevo o cargalo a mano.";
-      status.classList.add("text-danger");
+
+    .catch(function (error) {
+
+        console.error(error);
+
+        status.textContent =
+            "❌ No se pudo acceder a la cámara.";
+
+        status.className =
+            "form-text mb-3 text-danger";
+
+        scannerActivo = false;
+
     });
-});
+
+}
+
+
+/* ==========================================
+   CÓDIGO DETECTADO
+=========================================== */
+
+function codigoDetectado(decodedText) {
+
+    if (!scannerActivo) {
+        return;
+    }
+
+
+    scannerActivo = false;
+
+
+    const codigo =
+        decodedText.trim();
+
+
+    const status =
+        document.getElementById(
+            "scan-status"
+        );
+
+
+    status.textContent =
+        "🔎 Buscando producto " + codigo + "...";
+
+    status.className =
+        "form-text mb-3 text-primary";
+
+
+    detenerScanner();
+
+
+    /* ======================================
+       BUSCAR EN DJANGO
+    ====================================== */
+
+    fetch(
+        "{% url 'buscar_por_codigo' %}?codigo="
+        + encodeURIComponent(codigo)
+    )
+
+    .then(function(response) {
+
+        return response.json();
+
+    })
+
+    .then(function(data) {
+
+
+        /* ==============================
+           PRODUCTO EXISTENTE
+        =============================== */
+
+        if (data.encontrado) {
+
+            mostrarProductoExistente(data);
+
+            return;
+
+        }
+
+
+        /* ==============================
+           PRODUCTO NUEVO
+        =============================== */
+
+        const campoCodigo =
+            document.getElementById(
+                "id_codigo_barra"
+            );
+
+
+        campoCodigo.value =
+            data.codigo_barra;
+
+
+        status.textContent =
+            "🆕 Producto nuevo. Completá los datos.";
+
+        status.className =
+            "form-text mb-3 text-success";
+
+
+        document
+            .getElementById(
+                "form-nuevo-producto"
+            )
+            .style.display = "block";
+
+
+        document
+            .getElementById(
+                "id_nombre"
+            )
+            .focus();
+
+    })
+
+    .catch(function(error) {
+
+        console.error(error);
+
+        status.textContent =
+            "❌ Ocurrió un error al buscar el producto.";
+
+        status.className =
+            "form-text mb-3 text-danger";
+
+    });
+
+}
+
+
+/* ==========================================
+   MOSTRAR PRODUCTO EXISTENTE
+=========================================== */
+
+function mostrarProductoExistente(producto) {
+
+    document
+        .getElementById(
+            "producto-encontrado"
+        )
+        .style.display = "block";
+
+
+    document
+        .getElementById(
+            "form-nuevo-producto"
+        )
+        .style.display = "none";
+
+
+    document
+        .getElementById(
+            "producto-nombre"
+        )
+        .textContent =
+            producto.nombre;
+
+
+    document
+        .getElementById(
+            "producto-precio"
+        )
+        .textContent =
+            producto.precio;
+
+
+    document
+        .getElementById(
+            "producto-stock"
+        )
+        .textContent =
+            producto.stock;
+
+
+    document
+        .getElementById(
+            "producto-codigo"
+        )
+        .textContent =
+            producto.codigo_barra;
+
+
+    /* URL para agregar stock */
+
+    document
+        .getElementById(
+            "form-stock"
+        )
+        .action =
+            "{% url 'agregar_stock' 0 %}"
+                .replace(
+                    "/0/",
+                    "/" + producto.id + "/"
+                );
+
+
+    document
+        .getElementById(
+            "scan-status"
+        )
+        .textContent =
+            "✅ Producto encontrado.";
+
+}
+
+
+/* ==========================================
+   DETENER CÁMARA
+=========================================== */
+
+document
+    .getElementById("btn-detener")
+    .addEventListener(
+        "click",
+        detenerScanner
+    );
+
+
+function detenerScanner() {
+
+    if (!scanner) {
+
+        document
+            .getElementById(
+                "scanner-container"
+            )
+            .style.display = "none";
+
+        return;
+
+    }
+
+
+    scanner.stop()
+
+        .then(function() {
+
+            scanner.clear();
+
+            scanner = null;
+
+        })
+
+        .catch(function(error) {
+
+            console.error(
+                "Error al detener cámara:",
+                error
+            );
+
+        });
+
+
+    document
+        .getElementById(
+            "scanner-container"
+        )
+        .style.display = "none";
+
+}
+
 </script>
+
 {% endblock %}
