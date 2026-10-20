@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User, Group
-from .models import Producto, ComercioConfig, Caja
+from .models import Producto, ComercioConfig, Caja, SesionCaja, Achique, Voucher
 
 
 class ProductoForm(forms.ModelForm):
@@ -106,5 +106,49 @@ class UsuarioForm(forms.ModelForm):
             rol = self.cleaned_data.get("rol")
             if rol:
                 user.groups.set([rol])
+                if rol.name in ["Administrador", "Gerente"]:
+                    user.is_staff = True
+                else:
+                    user.is_staff = False
+                user.save()
         return user
+
+
+class AperturaCajaForm(forms.ModelForm):
+    class Meta:
+        model = SesionCaja
+        fields = ["monto_inicial"]
+        widgets = {
+            "monto_inicial": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
+        }
+
+
+class AchiqueForm(forms.ModelForm):
+    class Meta:
+        model = Achique
+        fields = ["monto", "motivo"]
+        widgets = {
+            "monto": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0.01"}),
+            "motivo": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+        }
+
+
+class VoucherForm(forms.ModelForm):
+    class Meta:
+        model = Voucher
+        fields = ["codigo_referencia", "monto_precargado", "metodo_pago_carga"]
+        widgets = {
+            "codigo_referencia": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ej: VOUCHER-001"}),
+            "monto_precargado": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0.01"}),
+            "metodo_pago_carga": forms.Select(attrs={"class": "form-select"}),
+        }
+
+
+class CierreCajaForm(forms.ModelForm):
+    class Meta:
+        model = SesionCaja
+        fields = ["monto_declarado_fisico"]
+        widgets = {
+            "monto_declarado_fisico": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
+        }
 

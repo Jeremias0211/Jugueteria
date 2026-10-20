@@ -1,0 +1,62 @@
+{% extends "productos/base.html" %}
+{% block title %}Informe de Cierre de Caja — Juguetería{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-8">
+    <div class="card p-4">
+      <div class="text-center mb-4">
+        <h2>📊 Informe de Cierre de Caja</h2>
+        <h5 class="text-muted">Caja: {{ sesion.caja.nombre }} | Sesión #{{ sesion.pk }}</h5>
+        <p class="text-muted">Fecha Apertura: {{ sesion.fecha_apertura|date:"d/m/Y H:i" }} | Cierre: {{ sesion.fecha_cierre|date:"d/m/Y H:i" }}</p>
+      </div>
+      
+      <hr>
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <p><strong>Cajero:</strong> {{ sesion.cajero.username }}</p>
+          <p><strong>Monto Inicial:</strong> ${{ sesion.monto_inicial }}</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <p><strong>Monto Físico Declarado:</strong> ${{ sesion.monto_declarado_fisico }}</p>
+          <p><strong>Diferencia:</strong> <span class="badge {% if sesion.diferencia > 3000 or sesion.diferencia < -3000 %}bg-danger{% else %}bg-success{% endif %}">${{ sesion.diferencia }}</span></p>
+        </div>
+      </div>
+
+      <table class="table table-bordered">
+        <thead class="table-light">
+          <tr>
+            <th>Concepto / Método de Pago</th>
+            <th>Total Vendido</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Total Vendido en Efectivo</td>
+            <td><strong>${{ totales.total_efectivo }}</strong></td>
+          </tr>
+          <tr>
+            <td>Total Vendido en Digital</td>
+            <td><strong>${{ totales.total_digital }}</strong></td>
+          </tr>
+          <tr>
+            <td>Total Vendido en Voucher</td>
+            <td><strong>${{ totales.total_voucher }}</strong></td>
+          </tr>
+          <tr>
+            <td>Total Achiques (Retiros)</td>
+            <td><strong>${{ totales.total_achiques }}</strong></td>
+          </tr>
+          <tr class="table-secondary">
+            <td><strong>Efectivo Esperado en Caja</strong></td>
+            <td><strong>${{ totales.monto_esperado }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="text-center mt-4">
+        <a href="{% url 'carga_productos' %}" class="btn btn-primary">Volver al Inicio</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

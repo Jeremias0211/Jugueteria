@@ -1,10 +1,19 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.models import User, Group
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 
 from .forms import ProductoForm, ComercioConfigForm, CajaForm, UsuarioForm
 from .models import Producto, ComercioConfig, Caja
+
+
+def es_administrador_o_gerente(user):
+    return user.is_authenticated and (user.is_superuser or user.is_staff or user.groups.filter(name__in=["Administrador", "Gerente"]).exists())
+
+
+def es_personal_autorizado(user):
+    return user.is_authenticated and (user.is_superuser or user.is_staff or user.groups.filter(name__in=["Administrador", "Gerente", "Deposito", "Cajero"]).exists())
 
 
 def asegurar_grupos():
@@ -14,6 +23,7 @@ def asegurar_grupos():
         Group.objects.get_or_create(name=rol)
 
 
+@user_passes_test(es_personal_autorizado)
 def carga_productos(request):
     """Pantalla principal de carga y gestión de productos."""
 
@@ -58,6 +68,7 @@ def carga_productos(request):
     )
 
 
+@user_passes_test(es_personal_autorizado)
 def buscar_por_codigo(request):
     """
     Busca un producto utilizando su código de barras.
@@ -93,6 +104,7 @@ def buscar_por_codigo(request):
     })
 
 
+@user_passes_test(es_personal_autorizado)
 def agregar_stock(request, pk):
     """
     Agrega unidades al stock de un producto existente.
@@ -127,6 +139,7 @@ def agregar_stock(request, pk):
     return redirect("carga_productos")
 
 
+@user_passes_test(es_personal_autorizado)
 def eliminar_producto(request, pk):
 
     producto = get_object_or_404(Producto, pk=pk)
@@ -147,6 +160,7 @@ def eliminar_producto(request, pk):
 
 # --- PANEL DE ADMINISTRACIÓN ---
 
+@user_passes_test(es_administrador_o_gerente)
 def admin_dashboard(request):
     """Panel principal del Administrador del Sistema."""
     asegurar_grupos()
@@ -167,6 +181,7 @@ def admin_dashboard(request):
     )
 
 
+@user_passes_test(es_administrador_o_gerente)
 def admin_comercio(request):
     """Configurar datos del comercio (sucursal, domicilio, razón social)."""
     comercio = ComercioConfig.load()
@@ -185,6 +200,7 @@ def admin_comercio(request):
     return render(request, "productos/admin_comercio.html", {"form": form, "comercio": comercio})
 
 
+@user_passes_test(es_administrador_o_gerente)
 def admin_usuario_crear(request):
     """Crear y administrar usuarios y asignar roles (Administrador, Gerente, Deposito, Cajero)."""
     asegurar_grupos()
@@ -203,6 +219,7 @@ def admin_usuario_crear(request):
     return render(request, "productos/admin_usuario_form.html", {"form": form, "accion": "Crear"})
 
 
+@user_passes_test(es_administrador_o_gerente)
 def admin_usuario_editar(request, pk):
     """Editar usuario y su rol."""
     asegurar_grupos()
@@ -222,6 +239,7 @@ def admin_usuario_editar(request, pk):
     return render(request, "productos/admin_usuario_form.html", {"form": form, "accion": "Editar", "usuario_obj": usuario})
 
 
+@user_passes_test(es_administrador_o_gerente)
 def admin_usuario_eliminar(request, pk):
     """Eliminar usuario."""
     usuario = get_object_or_404(User, pk=pk)
@@ -235,6 +253,7 @@ def admin_usuario_eliminar(request, pk):
     return redirect("admin_dashboard")
 
 
+@user_passes_test(es_administrador_o_gerente)
 def admin_caja_crear(request):
     """Crear caja, configurar horarios de apertura y cierre y asignar cajero."""
     asegurar_grupos()
@@ -253,6 +272,7 @@ def admin_caja_crear(request):
     return render(request, "productos/admin_caja_form.html", {"form": form, "accion": "Crear"})
 
 
+@user_passes_test(es_administrador_o_gerente)
 def admin_caja_editar(request, pk):
     """Editar caja, horarios y cajero asignado."""
     asegurar_grupos()
@@ -272,6 +292,7 @@ def admin_caja_editar(request, pk):
     return render(request, "productos/admin_caja_form.html", {"form": form, "accion": "Editar", "caja_obj": caja})
 
 
+@user_passes_test(es_administrador_o_gerente)
 def admin_caja_eliminar(request, pk):
     """Eliminar caja."""
     caja = get_object_or_404(Caja, pk=pk)

@@ -1,0 +1,32 @@
+{% extends "productos/base.html" %}
+{% block title %}Cierre de Caja — Juguetería{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-6">
+    <div class="card p-4">
+      <h3 class="mb-3 text-danger">🔒 Cierre de Caja: {{ sesion.caja.nombre }}</h3>
+      <ul class="list-group mb-3">
+        <li class="list-group-item d-flex justify-content-between"><span>Monto Inicial:</span><strong>${{ sesion.monto_inicial }}</strong></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Total Vendido Efectivo:</span><strong>${{ totales.total_efectivo }}</strong></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Total Vendido Digital:</span><strong>${{ totales.total_digital }}</strong></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Total Vendido Voucher:</span><strong>${{ totales.total_voucher }}</strong></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Total Achiques:</span><strong>${{ totales.total_achiques }}</strong></li>
+        <li class="list-group-item d-flex justify-content-between bg-light"><span>Efectivo Esperado en Caja:</span><strong>${{ totales.monto_esperado }}</strong></li>
+      </ul>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label fw-bold">Declarar Monto Físico de Efectivo en Caja ($):</label>
+          {{ form.monto_declarado_fisico }}
+          <div class="form-text">El sistema comparará este monto con el efectivo esperado. Diferencia máxima permitida: $3000.</div>
+        </div>
+        <button type="submit" class="btn btn-danger w-100 btn-lg">Finalizar y Cerrar Caja</button>
+      </form>
+      <div class="mt-3 text-center">
+        <a href="{% url 'caja_dashboard' %}" class="btn btn-secondary btn-sm">Volver</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

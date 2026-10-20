@@ -1,0 +1,230 @@
+{% extends "productos/base.html" %}
+{% block title %}Punto de Venta — {{ caja.nombre }}{% endblock %}
+{% block content %}
+<div class="row mb-3">
+  <div class="col-12 d-flex justify-content-between align-items-center">
+    <h2>💵 Caja: {{ caja.nombre }} (Sesión #{{ sesion.pk }})</h2>
+    <div>
+      <a href="{% url 'caja_achique' %}" class="btn btn-warning btn-sm">💸 Registrar Achique</a>
+      <a href="{% url 'caja_vouchers' %}" class="btn btn-info btn-sm text-white">🎁 Vouchers</a>
+      <a href="{% url 'caja_cierre' %}" class="btn btn-danger btn-sm">🔒 Cierre de Caja</a>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <!-- Columna Izquierda: Productos Disponibles -->
+  <div class="col-md-6">
+    <div class="card p-3 mb-3">
+      <h4>📦 Productos en Stock</h4>
+      <input type="text" id="filtroProductos" class="form-control mb-3" placeholder="Buscar producto...">
+      <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Precio</th>
+              <th>Stock</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="tablaProductos">
+            {% for p in productos %}
+            <tr>
+              <td>{{ p.nombre }}<br><small class="text-muted">{{ p.codigo_barra }}</small></td>
+              <td>${{ p.precio }}</td>
+              <td><span class="badge {% if p.stock <= 5 %}badge-bajo{% else %}badge-ok{% endif %} text-white">{{ p.stock }}</span></td>
+              <td>
+                <form action="{% url 'caja_agregar_carrito' p.pk %}" method="post" class="d-flex align-items-center">
+                  {% csrf_token %}
+                  <input type="number" name="cantidad" value="1" min="1" max="{{ p.stock }}" class="form-control form-control-sm me-1" style="width: 60px;">
+                  <button type="submit" class="btn btn-primary btn-sm">+</button>
+                </form>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted">No hay productos con stock.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Columna Derecha: Carrito y Cobro -->
+  <div class="col-md-6">
+    <div class="card p-3 mb-3">
+      <h4>🛒 Carrito de Venta Actual</h4>
+      {% if cart_items %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr><th>Producto</th><th>Cant</th><th>Subtotal</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for item in cart_items %}
+            <tr>
+              <td>{{ item.producto.nombre }}<br><small class="text-muted">${{ item.producto.precio }} c/u</small></td>
+              <td>{{ item.cantidad }}</td>
+              <td>${{ item.subtotal }}</td>
+              <td><a href="{% url 'caja_quitar_carrito' item.id_str %}" class="btn btn-outline-danger btn-sm">❌</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert alert-info py-2 d-flex justify-content-between align-items-center mb-3">
+        <span class="fw-bold">Total a Pagar:</span>
+        <span class="fs-4 fw-bold text-success">${{ cart_total }}</span>
+      </div>
+
+      <!-- Indicador de Vouchers Disponibles -->
+      <div class="card bg-light p-2 mb-3">
+        <small class="fw-bold text-secondary mb-1">🎁 Vouchers Disponibles para Aplicar:</small>
+        {% if vouchers_disponibles %}
+          <div class="d-flex flex-wrap gap-1">
+            {% for v in vouchers_disponibles %}
+              <span class="badge bg-warning text-dark" title="Monto: ${{ v.monto_precargado }}">Ref: {{ v.codigo_referencia }} (${{ v.monto_precargado }})</span>
+            {% endfor %}
+          </div>
+          <small class="text-muted mt-1" style="font-size: 0.75rem;">Seleccioná el método "Voucher" e ingresá el código de referencia.</small>
+        {% else %}
+          <small class="text-muted">No hay vouchers disponibles actualmente.</small>
+        {% endif %}
+      </div>
+
+      <form action="{% url 'caja_procesar_venta' %}" method="post" class="mt-3">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label fw-bold">Método de Pago:</label>
+          <select name="metodo_pago" id="selectMetodoPago" class="form-select" onchange="togglePagoCampos()">
+            <option value="EFECTIVO">1. Efectivo</option>
+            <option value="DIGITAL">2. Pago Digital (Tarjeta / Transferencia)</option>
+            <option value="VOUCHER">3. Voucher / Tarjeta de Regalo</option>
+            <option value="MIXTO_EFECTIVO_DIGITAL">Mixto (Efectivo + Digital)</option>
+          </select>
+        </div>
+
+        <div class="mb-3" id="campoEfectivo">
+          <label class="form-label">Efectivo Entregado ($):</label>
+          <input type="number" name="monto_efectivo_pagado" step="0.01" class="form-control" placeholder="0.00">
+        </div>
+
+        <div class="mb-3 d-none" id="campoVoucher">
+          <label class="form-label">Código de Referencia del Voucher:</label>
+          <input type="text" name="voucher_codigo" class="form-control" placeholder="Ej: VOUCHER-123">
+          <label class="form-label mt-2">Si el voucher no cubre el total, pagar diferencia con:</label>
+          <select name="metodo_diferencia" class="form-select">
+            <option value="EFECTIVO">Efectivo</option>
+            <option value="DIGITAL">Pago Digital</option>
+          </select>
+        </div>
+
+        <div class="mb-3 d-none" id="campoMixto">
+          <div class="row">
+            <div class="col-6">
+              <label class="form-label">Monto Efectivo:</label>
+              <input type="number" name="monto_efectivo" step="0.01" class="form-control" value="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Monto Digital:</label>
+              <input type="number" name="monto_digital" step="0.01" class="form-control" value="0">
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-success w-100 btn-lg">✅ Cobrar Venta</button>
+      </form>
+      {% else %}
+      <p class="text-muted text-center my-4">El carrito está vacío. Seleccione productos de la izquierda.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Ventas Recientes y Anulaciones -->
+<div class="row">
+  <div class="col-12">
+    <div class="card p-3">
+      <h4>🧾 Ventas Recientes en esta Sesión</h4>
+      <div class="table-responsive">
+        <table class="table table-striped align-middle">
+          <thead>
+            <tr>
+              <th>#Venta</th>
+              <th>Hora</th>
+              <th>Total</th>
+              <th>Efectivo</th>
+              <th>Digital</th>
+              <th>Voucher</th>
+              <th>Vuelto</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in ventas_recientes %}
+            <tr>
+              <td>#{{ v.pk }}</td>
+              <td>{{ v.fecha|date:"H:i:s" }}</td>
+              <td>${{ v.total }}</td>
+              <td>${{ v.monto_efectivo }}</td>
+              <td>${{ v.monto_digital }}</td>
+              <td>${{ v.monto_voucher }}</td>
+              <td>${{ v.vuelto }}</td>
+              <td>
+                {% if v.anulada %}
+                <span class="badge bg-danger">ANULADA</span>
+                {% else %}
+                <span class="badge bg-success">ACTIVA</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if not v.anulada %}
+                <a href="{% url 'caja_anular_venta' v.pk %}" class="btn btn-outline-danger btn-sm">Anular (NC)</a>
+                {% else %}
+                <small class="text-muted">NC: {{ v.nota_credito.pk }}</small>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="text-center text-muted">No hay ventas registradas en esta sesión.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function togglePagoCampos() {
+  const metodo = document.getElementById("selectMetodoPago").value;
+  const campoEf = document.getElementById("campoEfectivo");
+  const campoVo = document.getElementById("campoVoucher");
+  const campoMi = document.getElementById("campoMixto");
+
+  campoEf.classList.add("d-none");
+  campoVo.classList.add("d-none");
+  campoMi.classList.add("d-none");
+
+  if (metodo === "EFECTIVO") {
+    campoEf.classList.remove("d-none");
+  } else if (metodo === "VOUCHER") {
+    campoVo.classList.remove("d-none");
+  } else if (metodo === "MIXTO_EFECTIVO_DIGITAL") {
+    campoMi.classList.remove("d-none");
+  }
+}
+
+document.getElementById("filtroProductos").addEventListener("keyup", function() {
+  const filter = this.value.toLowerCase();
+  const rows = document.querySelectorAll("#tablaProductos tr");
+  rows.forEach(row => {
+    const text = row.innerText.toLowerCase();
+    row.style.display = text.includes(filter) ? "" : "none";
+  });
+});
+</script>
+{% endblock %}

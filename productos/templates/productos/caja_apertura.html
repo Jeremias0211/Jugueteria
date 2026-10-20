@@ -1,0 +1,23 @@
+{% extends "productos/base.html" %}
+{% block title %}Apertura de Caja — Juguetería{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-6">
+    <div class="card p-4">
+      <h3 class="mb-3">🔓 Apertura de Caja: {{ caja.nombre }}</h3>
+      <p class="text-muted">Cajero asignado: <strong>{{ caja.cajero.username|default:"Sin asignar" }}</strong></p>
+      <p class="text-muted">Horario habilitado: {{ caja.horario_apertura }} - {{ caja.horario_cierre }}</p>
+      <hr>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">Monto inicial en efectivo ($):</label>
+          {{ form.monto_inicial }}
+          <div class="form-text">Ingrese el efectivo disponible en caja para iniciar la jornada.</div>
+        </div>
+        <button type="submit" class="btn btn-success w-100 btn-lg">Abrir Caja</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

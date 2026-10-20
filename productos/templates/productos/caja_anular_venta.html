@@ -1,0 +1,25 @@
+{% extends "productos/base.html" %}
+{% block title %}Anular Venta / Nota de Crédito — Juguetería{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-6">
+    <div class="card p-4">
+      <h3 class="mb-3 text-danger">⚠️ Anular Venta #{{ venta.pk }}</h3>
+      <p><strong>Total de venta:</strong> ${{ venta.total }}</p>
+      <p><strong>Fecha:</strong> {{ venta.fecha }}</p>
+      <hr>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label fw-bold">Motivo de la anulación (Genera Nota de Crédito):</label>
+          <textarea name="motivo" class="form-control" rows="4" required placeholder="Indique detalladamente el motivo del error..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-danger w-100">Generar Nota de Crédito y Anular</button>
+      </form>
+      <div class="mt-3 text-center">
+        <a href="{% url 'caja_dashboard' %}" class="btn btn-secondary btn-sm">Cancelar</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

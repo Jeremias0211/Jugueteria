@@ -21,13 +21,30 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-      <ul class="navbar-nav">
+      <ul class="navbar-nav align-items-center">
         <li class="nav-item">
-          <a class="nav-link {% if request.resolver_match.url_name == 'carga_productos' %}active fw-bold{% endif %}" href="{% url 'carga_productos' %}">📦 Depósito (Productos)</a>
+          <a class="nav-link {% if request.resolver_match.url_name == 'carga_productos' %}active fw-bold{% endif %}" href="{% url 'carga_productos' %}">📦 Depósito</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link {% if 'admin' in request.resolver_match.url_name %}active fw-bold{% endif %}" href="{% url 'admin_dashboard' %}">⚙️ Panel Administrador</a>
+          <a class="nav-link {% if 'caja' in request.resolver_match.url_name %}active fw-bold{% endif %}" href="{% url 'caja_dashboard' %}">💵 Caja (PV)</a>
         </li>
+        {% if user.is_authenticated and user.is_staff or user.is_superuser %}
+        <li class="nav-item">
+          <a class="nav-link {% if 'admin' in request.resolver_match.url_name %}active fw-bold{% endif %}" href="{% url 'admin_dashboard' %}">⚙️ Admin</a>
+        </li>
+        {% endif %}
+        {% if user.is_authenticated %}
+        <li class="nav-item ms-2">
+          <form action="{% url 'logout' %}" method="post" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-light">Salir ({{ user.username }})</button>
+          </form>
+        </li>
+        {% else %}
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'login' %}">Ingresar</a>
+        </li>
+        {% endif %}
       </ul>
     </div>
   </div>
